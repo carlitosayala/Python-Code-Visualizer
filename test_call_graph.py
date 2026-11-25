@@ -1,42 +1,50 @@
-import ast
+import tkinter as tk
 
-def safe_parse(path):
-    try:
-        with open(path, "r") as f:
-            return ast.parse(f.read())
-    except SyntaxError:
-        print("✔ Syntax error detected correctly.")
-        return None
+from python_code_visualizer import UMLCanvasApp
+
 
 def test_call_graph_valid():
-    code = """
-def a(): pass
-def b(): a()
-def c(): b()
-a(); c()
-"""
-    with open("valid_call_test.py", "w") as f:
-        f.write(code)
+    root = tk.Tk()
+    root.withdraw()
 
-    tree = safe_parse("valid_call_test.py")
-    if tree:
-        calls = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Name):
-                    calls.append(node.func.id)
-                elif isinstance(node.func, ast.Attribute):
-                    calls.append(node.func.attr)
+    app = UMLCanvasApp(root)
+    app.file_path = "valid_call_test.py"
 
-        print("Call Graph:", sorted(set(calls)))
+    app.generate_call_graph()
+
+    output = app.output.get("1.0", tk.END)
+
+    expected_results = [
+        "<module> -> a()",
+        "<module> -> c()",
+        "a() -> no calls",
+        "b() -> a()",
+        "c() -> b()"
+    ]
+
+    print("\n--- Testing Call Graph ---")
+
+    for expected in expected_results:
+        assert expected in output
+        print(f"✔ Found: {expected}")
+
+    root.destroy()
+
 
 def test_call_graph_syntax_error():
-    code = "def broken(:\n    pass"
-    with open("syntax_error_test.py", "w") as f:
-        f.write(code)
+    root = tk.Tk()
+    root.withdraw()
 
-    safe_parse("syntax_error_test.py")
+    app = UMLCanvasApp(root)
+    app.file_path = "syntax_error_test.py"
 
-print("\n--- Testing Call Graph ---")
+    result = app.parse_safely()
+
+    assert result is None
+    print("✔ Syntax error detected correctly.")
+
+    root.destroy()
+
+
 test_call_graph_valid()
 test_call_graph_syntax_error()

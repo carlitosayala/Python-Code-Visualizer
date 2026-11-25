@@ -143,20 +143,71 @@ class UMLCanvasApp:
         if tree is None:
             return
 
-        calls = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
+        class CallGraphVisitor(ast.NodeVisitor):
+            def __init__(self):
+                self.current_function = "<module>"
+                self.calls = defaultdict(set)
+                self.functions = set()
+
+            def visit_FunctionDef(self, node):
+                previous_function = self.current_function
+
+                self.current_function = node.name
+                self.functions.add(node.name)
+                self.calls.setdefault(node.name, set())
+
+                for statement in node.body:
+                    self.visit(statement)
+
+                self.current_function = previous_function
+
+            def visit_AsyncFunctionDef(self, node):
+                self.visit_FunctionDef(node)
+
+            def visit_Call(self, node):
+                called_name = None
+
                 if isinstance(node.func, ast.Name):
-                    calls.append(node.func.id)
+                    called_name = node.func.id
+
                 elif isinstance(node.func, ast.Attribute):
-                    calls.append(node.func.attr)
+                    called_name = node.func.attr
+
+                if called_name:
+                    self.calls[self.current_function].add(called_name)
+
+                self.generic_visit(node)
+
+        visitor = CallGraphVisitor()
+        visitor.visit(tree)
 
         self.output.insert(tk.END, "📞 Call Graph:\n")
-        if calls:
-            for c in sorted(set(calls)):
-                self.output.insert(tk.END, f" - {c}()\n")
-        else:
-            self.output.insert(tk.END, "No function calls found.\n")
+
+        # Calls made outside of a function
+        module_calls = visitor.calls.get("<module>", set())
+
+        for called in sorted(module_calls):
+            self.output.insert(
+                tk.END,
+                f" - <module> -> {called}()\n"
+            )
+
+        # Calls made inside functions
+        for function_name in sorted(visitor.functions):
+            called_functions = visitor.calls.get(function_name, set())
+
+            if called_functions:
+                for called in sorted(called_functions):
+                    self.output.insert(
+                        tk.END,
+                        f" - {function_name}() -> {called}()\n"
+                    )
+            else:
+                self.output.insert(
+                    tk.END,
+                    f" - {function_name}() -> no calls\n"
+                )
+
         self.output.insert(tk.END, "\n")
 
     # ========== TEST CASE: Textual Class Diagram ==========
