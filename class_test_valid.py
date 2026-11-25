@@ -1,8 +1,19 @@
-
 class A:
     x = 1
-    def f(self): pass
+
+    def __init__(self):
+        self.name = "A"
+        self.value = 10
+
+    def f(self):
+        pass
+
 
 class B(A):
     y = 2
-    def g(self): pass
+
+    def __init__(self):
+        self.description = "B"
+
+    def g(self):
+        self.description += "!"

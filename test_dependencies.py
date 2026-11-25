@@ -1,11 +1,10 @@
 import ast
 
-def module_exists(name):
-    try:
-        __import__(name)
-        return True
-    except:
-        return False
+from python_code_visualizer import (
+    extract_dependencies,
+    module_exists,
+)
+
 
 def test_dependencies():
     code = """
@@ -15,28 +14,66 @@ import made_up_module
 from sys import path
 from fake.mod import x
 """
-    with open("dep_test.py", "w") as f:
-        f.write(code)
 
-    tree = ast.parse(open("dep_test.py").read())
+    imports = extract_dependencies(
+        ast.parse(code)
+    )
 
-    imports = []
-    unresolved = []
+    assert imports == [
+        "fake.mod",
+        "made_up_module",
+        "math",
+        "os",
+        "sys",
+    ]
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imports.append(alias.name)
-                if not module_exists(alias.name):
-                    unresolved.append(alias.name)
+    assert module_exists("os")
+    assert module_exists("math")
+    assert module_exists("sys")
 
-        elif isinstance(node, ast.ImportFrom):
-            imports.append(node.module)
-            if not module_exists(node.module):
-                unresolved.append(node.module)
+    assert not module_exists(
+        "made_up_module"
+    )
 
-    print("\n✔ Module Imports Found:", imports)
-    print("✔ Unresolved Imports:", unresolved)
+    assert not module_exists(
+        "fake.mod"
+    )
 
-print("\n--- Testing Dependencies ---")
-test_dependencies()
+    print(
+        "--- Testing Dependencies ---"
+    )
+
+    print(
+        "PASS: imports found:",
+        imports,
+    )
+
+    print(
+        "PASS: missing modules detected"
+    )
+
+
+def test_relative_import():
+    imports = extract_dependencies(
+        ast.parse(
+            "from .helpers import thing"
+        )
+    )
+
+    assert imports == [
+        ".helpers"
+    ]
+
+    assert module_exists(
+        ".helpers"
+    )
+
+    print(
+        "PASS: relative imports "
+        "handled without crashing"
+    )
+
+
+if __name__ == "__main__":
+    test_dependencies()
+    test_relative_import()

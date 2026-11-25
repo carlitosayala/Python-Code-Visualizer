@@ -1,25 +1,80 @@
-# Simulated class dictionary like the real app uses
+from python_code_visualizer import UMLCanvasApp
 
-classes = {
-    "A": {"bases": [], "methods": ["f"], "attrs": ["x"]},
-    "B": {"bases": ["A"], "methods": ["g"], "attrs": ["y"]},
-    "C": {"bases": [], "methods": [], "attrs": []},
-}
 
-def layout(classes):
-    positions = {}
-    x = 50
-    y = 50
-    for cname in classes:
-        w, h = 220, 140
-        positions[cname] = (x, y, w, h)
-        x += 300
-        if x > 1500:
-            x = 50
-            y += 220
-    return positions
+def test_horizontal_connection():
+    child = (
+        350,
+        50,
+        240,
+        160,
+    )
 
-print("\n--- Testing UML Layout ---")
-pos = layout(classes)
-for cname, p in pos.items():
-    print(f"{cname}: {p}")
+    parent = (
+        50,
+        50,
+        240,
+        160,
+    )
+
+    points = (
+        UMLCanvasApp._connection_points(
+            child,
+            parent,
+        )
+    )
+
+    assert points == (
+        350,
+        130.0,
+        290,
+        130.0,
+    )
+
+    print(
+        "--- Testing UML Connections ---"
+    )
+
+    print(
+        "PASS: horizontal inheritance "
+        "connection points toward parent"
+    )
+
+
+def test_vertical_connection():
+    child = (
+        50,
+        300,
+        240,
+        160,
+    )
+
+    parent = (
+        50,
+        50,
+        240,
+        160,
+    )
+
+    points = (
+        UMLCanvasApp._connection_points(
+            child,
+            parent,
+        )
+    )
+
+    assert points == (
+        170.0,
+        300,
+        170.0,
+        210,
+    )
+
+    print(
+        "PASS: vertical inheritance "
+        "connection points toward parent"
+    )
+
+
+if __name__ == "__main__":
+    test_horizontal_connection()
+    test_vertical_connection()

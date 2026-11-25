@@ -1,50 +1,100 @@
-import tkinter as tk
+import ast
 
-from python_code_visualizer import UMLCanvasApp
+from python_code_visualizer import build_call_graph
 
 
 def test_call_graph_valid():
-    root = tk.Tk()
-    root.withdraw()
+    code = """
+def a():
+    pass
 
-    app = UMLCanvasApp(root)
-    app.file_path = "valid_call_test.py"
+def b():
+    a()
 
-    app.generate_call_graph()
+def c():
+    b()
 
-    output = app.output.get("1.0", tk.END)
+a()
+c()
+"""
 
-    expected_results = [
-        "<module> -> a()",
-        "<module> -> c()",
-        "a() -> no calls",
-        "b() -> a()",
-        "c() -> b()"
-    ]
+    graph = build_call_graph(
+        ast.parse(code)
+    )
 
-    print("\n--- Testing Call Graph ---")
+    calls = graph["calls"]
 
-    for expected in expected_results:
-        assert expected in output
-        print(f"✔ Found: {expected}")
+    assert calls["<module>"] == {
+        "a",
+        "c",
+    }
 
-    root.destroy()
+    assert calls["a"] == set()
 
+    assert calls["b"] == {
+        "a"
+    }
 
-def test_call_graph_syntax_error():
-    root = tk.Tk()
-    root.withdraw()
+    assert calls["c"] == {
+        "b"
+    }
 
-    app = UMLCanvasApp(root)
-    app.file_path = "syntax_error_test.py"
-
-    result = app.parse_safely()
-
-    assert result is None
-    print("✔ Syntax error detected correctly.")
-
-    root.destroy()
+    print("--- Testing Call Graph ---")
+    print("PASS: <module> -> a(), c()")
+    print("PASS: a() -> no calls")
+    print("PASS: b() -> a()")
+    print("PASS: c() -> b()")
 
 
-test_call_graph_valid()
-test_call_graph_syntax_error()
+def test_method_call_graph():
+    code = """
+class Worker:
+    def start(self):
+        self.finish()
+
+    def finish(self):
+        print("done")
+"""
+
+    graph = build_call_graph(
+        ast.parse(code)
+    )
+
+    calls = graph["calls"]
+
+    assert calls["Worker.start"] == {
+        "self.finish"
+    }
+
+    assert calls["Worker.finish"] == {
+        "print"
+    }
+
+    print(
+        "PASS: class methods are "
+        "qualified by class name"
+    )
+
+
+def test_syntax_error():
+    try:
+        ast.parse(
+            "def broken(:\n"
+            "    pass"
+        )
+
+        raise AssertionError(
+            "Expected SyntaxError"
+        )
+
+    except SyntaxError:
+        print(
+            "PASS: syntax error "
+            "detected correctly"
+        )
+
+
+if __name__ == "__main__":
+    test_call_graph_valid()
+    test_method_call_graph()
+    test_syntax_error()

@@ -1,44 +1,98 @@
 import ast
 
-def extract_classes(tree):
-    classes = {}
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            name = node.name
-            bases = [b.id for b in node.bases if isinstance(b, ast.Name)]
-            methods = [m.name for m in node.body if isinstance(m, ast.FunctionDef)]
-            attrs = [a.targets[0].id for a in node.body
-                     if isinstance(a, ast.Assign) and isinstance(a.targets[0], ast.Name)]
-            classes[name] = {"bases": bases, "methods": methods, "attrs": attrs}
-    return classes
+from python_code_visualizer import extract_classes
+
 
 def test_classes_valid():
     code = """
 class A:
     x = 1
-    def f(self): pass
+
+    def __init__(self):
+        self.name = "A"
+        self.value: int = 10
+
+    def f(self):
+        pass
+
 
 class B(A):
     y = 2
-    def g(self): pass
-"""
-    with open("class_test_valid.py", "w") as f:
-        f.write(code)
 
-    tree = ast.parse(open("class_test_valid.py").read())
-    result = extract_classes(tree)
-    print("\n✔ Valid Class Parsing:")
-    for c, data in result.items():
-        print(f"{c}: {data}")
+    def __init__(self):
+        self.description = "B"
+
+    def g(self):
+        self.description += "!"
+"""
+
+    result = extract_classes(
+        ast.parse(code)
+    )
+
+    assert result["A"]["bases"] == []
+
+    assert result["A"]["methods"] == [
+        "__init__",
+        "f",
+    ]
+
+    assert result["A"]["attrs"] == [
+        "name",
+        "value",
+        "x",
+    ]
+
+    assert result["B"]["bases"] == [
+        "A"
+    ]
+
+    assert result["B"]["methods"] == [
+        "__init__",
+        "g",
+    ]
+
+    assert result["B"]["attrs"] == [
+        "description",
+        "y",
+    ]
+
+    print("--- Testing Class Diagram ---")
+
+    print(
+        "PASS: inheritance detected"
+    )
+
+    print(
+        "PASS: methods detected"
+    )
+
+    print(
+        "PASS: class attributes detected"
+    )
+
+    print(
+        "PASS: self.* instance "
+        "attributes detected"
+    )
+
 
 def test_classes_none():
-    with open("class_test_none.py", "w") as f:
-        f.write("a = 10\nb = 20\n")
+    result = extract_classes(
+        ast.parse(
+            "a = 10\n"
+            "b = 20\n"
+        )
+    )
 
-    tree = ast.parse(open("class_test_none.py").read())
-    result = extract_classes(tree)
-    print("\n✔ No Class Case:", result)
+    assert result == {}
 
-print("\n--- Testing Class Diagram ---")
-test_classes_valid()
-test_classes_none()
+    print(
+        "PASS: no-class case "
+        "handled correctly"
+    )
+
+
+if __name__ == "__main__":
+    test_classes_valid()
+    test_classes_none()
